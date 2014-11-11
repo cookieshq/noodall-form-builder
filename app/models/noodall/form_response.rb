@@ -21,7 +21,7 @@ module Noodall
     def required_fields
       self.form.fields.select{ |f| f.required? }
     end
-    
+
     def correct_fields?
       self.form.fields.each do |f|
         return false unless self.respond_to?(f.name.downcase.parameterize("_").to_sym)
@@ -32,13 +32,13 @@ module Noodall
     def approve!
       self.approved = true
       self.save!
-      self.class.defensio.put_document(defensio_signature, { :allow => true })
+      #self.class.defensio.put_document(defensio_signature, { :allow => true })
     end
 
     def mark_as_spam!
       self.approved = false
       self.save!
-      self.class.defensio.put_document(defensio_signature, { :allow => false })
+      #self.class.defensio.put_document(defensio_signature, { :allow => false })
     end
 
     def is_spam?
@@ -59,14 +59,16 @@ module Noodall
   protected
     def check_for_spam
       if self.defensio_signature.blank?
-        status, response = self.class.defensio.post_document(self.defensio_attributes)
-        return true unless status == 200
+        self.approved == true
+        return true
+        #status, response = self.class.defensio.post_document(self.defensio_attributes)
+        #return true unless status == 200
 
-        self.defensio_signature = response['signature']
-        self.spaminess = response['spaminess']
-        self.approved = response['allow']
+        #self.defensio_signature = response['signature']
+        #self.spaminess = response['spaminess']
+        #self.approved = response['allow']
       end
-      return true 
+      return true
     end
 
     def self.defensio
@@ -103,7 +105,7 @@ module Noodall
       required_fields.each do |field|
         self.errors.add(field.underscored_name.to_sym, "can't be empty") if self.send(field.underscored_name).blank?
       end
-      return true if self.errors.empty? 
+      return true if self.errors.empty?
     end
   end
 end
