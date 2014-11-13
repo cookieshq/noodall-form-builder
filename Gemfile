@@ -18,6 +18,7 @@ gem 'email_spec'
 gem 'fastercsv'
 gem 'system_timer'
 gem 'bson_ext'
+gem 'rakismet'
 
 if RUBY_VERSION < '1.9'
   gem "ruby-debug", ">= 0.10.3"

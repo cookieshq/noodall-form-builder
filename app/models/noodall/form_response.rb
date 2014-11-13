@@ -1,3 +1,5 @@
+require 'spam/akismet_spam_checker'
+
 module Noodall
   class FormResponse
     include MongoMapper::Document
@@ -32,13 +34,13 @@ module Noodall
     def approve!
       self.approved = true
       self.save!
-      #self.class.defensio.put_document(defensio_signature, { :allow => true })
+      self.class.spam_checker.mark_as_ham!(self)
     end
 
     def mark_as_spam!
       self.approved = false
       self.save!
-      #self.class.defensio.put_document(defensio_signature, { :allow => false })
+      self.class.spam_checker.mark_as_spam!(self)
     end
 
     def is_spam?
@@ -57,45 +59,50 @@ module Noodall
     end
 
   protected
+
     def check_for_spam
-      if self.defensio_signature.blank?
-        self.approved == true
-        return true
-        #status, response = self.class.defensio.post_document(self.defensio_attributes)
-        #return true unless status == 200
+      return if spam_checked?
 
-        #self.defensio_signature = response['signature']
-        #self.spaminess = response['spaminess']
-        #self.approved = response['allow']
+      # If no spam checking is enabled, just approve automatically
+      if self.class.spam_checker.nil?
+        self.approved = true
+        return
       end
-      return true
+
+      begin
+        spam, metadata = self.class.spam_checker.check(self)
+
+        self.approved           = spam
+        self.defensio_signature = metadata
+        self.checked            = true
+      rescue Noodall::FormBuilder::SpamCheckerConnectionError => e
+        self.approved           = true
+        self.defensio_signature = nil
+        self.checked            = false
+
+        Exceptional.handle(e, 'Spam Checker API Error') if defined?(Exceptional)
+      end
+
+      true
     end
 
-    def self.defensio
-      @@defensio ||= Defensio.new(self.defensio_api_key)
+    def spam_checked?
+      self.checked
     end
 
-    def self.defensio_api_key
-      defensio_config['api_key']
-    end
+    def self.spam_checker
+      @@spam_checker ||= begin
 
-    def self.defensio_config
-      logger.info "No Defensio config found" unless FileTest.exists?(File.join(Rails.root, 'config', 'defensio.yml'))
-      @defensio_config ||= YAML::load(File.open(File.join(Rails.root, 'config', 'defensio.yml')))
-    end
+        spam_service = Noodall::FormBuilder.spam_protection
+        return if spam_service.nil?
 
-    def defensio_attributes
-      {
-        'client' => 'Noodall Form Builder | 1.0 | Beef Ltd | hello@wearebeef.co.uk ',
-        'type' => 'other',
-        'platform' => 'noodall',
-        'content' => self.form.fields.map{|f| "#{f.name}: #{self.send(f.underscored_name) if self.respond_to?(f.underscored_name)}" }.join(' '),
-        'author-email' => self.email,
-        'author-name' => self.name,
-        'author-ip' => self.ip
-      }
-    end
+        spam_checker = "#{spam_service.capitalize}SpamChecker"
+        klass = Noodall::FormBuilder.const_get(spam_checker)
 
+        klass.new
+      end
+    end
+  end
 
   private
     validate :custom_validation
