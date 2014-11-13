@@ -10,6 +10,7 @@ module Noodall
     key :referrer, String, :required => true
     key :created_at, Time, :required => true
     key :approved, Boolean, :default => true
+    key :checked, Boolean, :default => false
     key :defensio_signature, String
     key :spaminess, Float, :default => 0
 
