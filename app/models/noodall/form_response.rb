@@ -102,7 +102,6 @@ module Noodall
         klass.new
       end
     end
-  end
 
   private
     validate :custom_validation
