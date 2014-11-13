@@ -97,7 +97,7 @@ module Noodall
         spam_service = Noodall::FormBuilder.spam_protection
         return if spam_service.nil?
 
-        spam_checker = "#{spam_service.capitalize}SpamChecker"
+        spam_checker = "#{spam_service.to_s.capitalize}SpamChecker"
         klass = Noodall::FormBuilder.const_get(spam_checker)
 
         klass.new
