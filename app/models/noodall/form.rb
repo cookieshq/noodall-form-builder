@@ -37,6 +37,9 @@ module Noodall
 
     validates_associated :fields, :message => "have not had a name completed"
 
+
+
+
     def boolean_fields
       self.fields.select{|f| f.class == Noodall::CheckBox }
     end
@@ -52,6 +55,7 @@ module Noodall
         end
       end
     end
+
 
   end
 end

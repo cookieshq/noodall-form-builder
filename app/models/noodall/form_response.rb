@@ -13,6 +13,9 @@ module Noodall
     key :approved, Boolean, :default => false
     key :checked, Boolean, :default => false
 
+    key :started_at, String
+    key :filtering_out, String
+
     # For Defensio only
     key :defensio_signature, String
 
@@ -23,6 +26,8 @@ module Noodall
     timestamps!
 
     belongs_to :form, :class => Noodall::Form, :foreign_key => 'noodall_form_id'
+
+    validate :is_not_a_spam
 
     def self.model_name
       ActiveModel::Name.new(self, nil, "Response")
@@ -68,6 +73,15 @@ module Noodall
       super.merge( class_eval( 'keys' ) )
     end
 
+
+    def is_not_a_spam
+      errors.add(:base, 'Sorry your response could not be saved') if filtering_out.present?
+      if started_at.present?
+        # If a something enters a form in less than 10 seconds, there is a good chance it's a bot.
+        errors.add(:base, 'Sorry your response could not be saved too fast') if  Time.now - Time.at(started_at.to_i) < 10
+      end
+    end
+
     protected
 
     def check_for_spam
@@ -78,7 +92,7 @@ module Noodall
         self.approved = true
         return
       end
-      
+
       begin
         spam, metadata = self.class.spam_checker.check(self)
 
@@ -89,7 +103,7 @@ module Noodall
         self.approved           = true
         self.defensio_signature = nil
         self.checked            = false
-        
+
         Exceptional.handle(e, 'Spam Checker API Error') if defined?(Exceptional)
       end
 
