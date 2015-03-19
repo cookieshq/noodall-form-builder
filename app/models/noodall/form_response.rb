@@ -80,6 +80,10 @@ module Noodall
         # If a something enters a form in less than 10 seconds, there is a good chance it's a bot.
         errors.add(:base, 'Sorry your response could not be saved too fast') if  Time.now - Time.at(started_at.to_i) < 10
       end
+
+      if ip.present?
+        errors.add(:base, 'Too many submissions') if Noodall::FormResponse.where(ip: ip, :created_at.gte => Time.now.beginning_of_day).count > 10
+      end
     end
 
     protected
