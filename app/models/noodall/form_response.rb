@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'spam/defensio_spam_checker'
 require 'spam/akismet_spam_checker'
 
@@ -27,7 +28,7 @@ module Noodall
 
     belongs_to :form, :class => Noodall::Form, :foreign_key => 'noodall_form_id'
 
-    validate :is_not_a_spam
+    validate :is_not_a_spam, on: :create
 
     def self.model_name
       ActiveModel::Name.new(self, nil, "Response")
@@ -81,12 +82,25 @@ module Noodall
         errors.add(:base, 'Sorry your response could not be saved too fast') if  Time.now - Time.at(started_at.to_i) < 10
       end
 
+      if (/\p{Han}|\p{Katakana}|\p{Hiragana}|\p{Hangul}/.match form_content(self)).present?
+        errors.add(:base, 'Sorry some characters are not valid')
+      end
+
       if ip.present?
         errors.add(:base, 'Too many submissions') if Noodall::FormResponse.where(ip: ip, :created_at.gte => Time.now.beginning_of_day).count > 10
       end
     end
 
     protected
+
+
+    def form_content(form_response)
+      form_response.form.fields.map do |f|
+        if form_response.respond_to?(f.underscored_name)
+          "#{f.name}: #{form_response.send(f.underscored_name)}"
+        end
+      end.join(' ')
+    end
 
     def check_for_spam
       return if spam_checked?
